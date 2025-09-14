@@ -16,15 +16,31 @@ easyblup is an interactive Shiny application that allows users to generate BLUPF
 - **User-friendly Interface**: Clean, intuitive design with color-coded model components
 - **Genomic Analysis**: Automatic generation of genomic analysis parameters when genotype data is provided
 
+## Quick Start
+
+### 1. Download the Project
+```bash
+git clone https://github.com/Thymine2001/easyblup.git
+cd easyblup
+```
+
+### 2. Install Required Packages
+```r
+install.packages(c("shiny", "sortable", "shinyjqui"), 
+                 repos = "https://cran.rstudio.com/")
+```
+
+### 3. Run the Application
+```bash
+cd shiny_app
+Rscript app.R
+```
+
+Then open your browser and go to `http://localhost:3838`
+
 ## Installation
 
-1. Make sure you have R (>= 3.6.0) installed
-2. Install required packages:
-   ```r
-   install.packages(c("shiny", "sortable"))
-   ```
-3. Clone or download this repository
-4. Open the `easyblup.Rproj` file in RStudio
+For detailed installation instructions, see [INSTALLATION.md](INSTALLATION.md)
 
 ## Usage
 
