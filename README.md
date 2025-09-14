@@ -16,6 +16,10 @@ easyblup is an interactive Shiny application that allows users to generate BLUPF
 - **User-friendly Interface**: Clean, intuitive design with color-coded model components
 - **Genomic Analysis**: Automatic generation of genomic analysis parameters when genotype data is provided
 
+## 🌐 Online Demo
+
+**Try the application online**: https://vb6clt-huangyi-tang.shinyapps.io/easyblup/
+
 ## Quick Start
 
 ### 1. Download the Project
