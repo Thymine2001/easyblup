@@ -5,6 +5,7 @@
 library(shiny)
 library(sortable)
 library(shinyjqui)
+library(shinyjs)
 
 # Define UI
 ui <- fluidPage(
