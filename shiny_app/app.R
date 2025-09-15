@@ -476,7 +476,7 @@ ui <- fluidPage(
         fileInput("pheno_file", "Upload Phenotype File", accept = c(".txt", ".dat", ".csv")),
         fileInput("ped_file", "Upload Pedigree File (Optional)", 
                  accept = c(".txt", ".ped")),
-        fileInput("geno_file", "Upload Genotype Files (Optional)", 
+        fileInput("geno_file", "Upload Genotype Files (Optional) - PLINK .ped/.map format only", 
                  accept = c(".ped", ".map"), multiple = TRUE),
         actionButton("clear_all", "Clear All", class = "btn-danger")
       ),
@@ -685,13 +685,13 @@ server <- function(input, output, session) {
     vars <- colnames(data())
     
     # Create draggable list with custom styling
-    sortable::rank_list(
+              sortable::rank_list(
       text = "Available Variables",
       labels = vars,
       input_id = "available_vars",
-      options = sortable::sortable_options(
-        group = list(
-          name = "shared_group",
+                options = sortable::sortable_options(
+                  group = list(
+                    name = "shared_group",
           pull = "clone",
           put = FALSE
         )
@@ -759,17 +759,17 @@ server <- function(input, output, session) {
   
   # Create drop zones for each model component
   output$traits_drop_zone <- renderUI({
-    sortable::rank_list(
+              sortable::rank_list(
       text = "Drag traits here",
       labels = values$traits,
       input_id = "traits_list",
-      options = sortable::sortable_options(
-        group = list(
-          name = "shared_group",
-          pull = TRUE,
-          put = TRUE
-        )
-      ),
+                options = sortable::sortable_options(
+                  group = list(
+                    name = "shared_group",
+                    pull = TRUE,
+                    put = TRUE
+                  )
+                ),
       css_id = "traits_list_container"
     )
   })
@@ -791,33 +791,33 @@ server <- function(input, output, session) {
   })
   
   output$animal_drop_zone <- renderUI({
-    sortable::rank_list(
+              sortable::rank_list(
       text = "Drag animal ID here",
       labels = values$animal,
-      input_id = "animal_list",
-      options = sortable::sortable_options(
-        group = list(
-          name = "shared_group",
-          pull = TRUE,
-          put = TRUE
-        )
-      ),
+                input_id = "animal_list",
+                options = sortable::sortable_options(
+                  group = list(
+                    name = "shared_group",
+                    pull = TRUE,
+                    put = TRUE
+                  )
+                ),
       css_id = "animal_list_container"
     )
   })
   
   output$random_drop_zone <- renderUI({
-    sortable::rank_list(
+              sortable::rank_list(
       text = "Drag random effects here",
       labels = values$random,
       input_id = "random_list",
-      options = sortable::sortable_options(
-        group = list(
-          name = "shared_group",
-          pull = TRUE,
-          put = TRUE
-        )
-      ),
+                options = sortable::sortable_options(
+                  group = list(
+                    name = "shared_group",
+                    pull = TRUE,
+                    put = TRUE
+                  )
+                ),
       css_id = "random_list_container"
     )
   })
@@ -970,6 +970,7 @@ server <- function(input, output, session) {
     has_ped <- !is.null(input$ped_file) && nrow(input$ped_file) > 0
     has_geno <- !is.null(input$geno_file) && nrow(input$geno_file) > 0
     
+    
     # Build parameter file
     param <- paste0(
       "# PARAMETER FILE for renumf90\n",
@@ -982,15 +983,14 @@ server <- function(input, output, session) {
       
       "TRAITS # Specify trait columns\n",
       if (length(values$traits) > 0) get_col_num(values$traits) else "# Add trait column numbers here",
-      "\n\n",
+      "\n",
       
       "FIELDS_PASSED TO OUTPUT\n",
       "\n",
       "WEIGHT(S)\n",
       "\n",
       "RESIDUAL_COVARIANCE\n",
-      generate_covariance_matrix(length(values$traits)), "\n",
-      "\n"
+      generate_covariance_matrix(length(values$traits)), "\n"
     )
     
     # Fixed effects
@@ -1020,9 +1020,8 @@ server <- function(input, output, session) {
           " ", effect_type, " alpha # ", eff, " fixed effect (", effect_type, ")\n"
         )
       }
-      param <- paste0(param, "\n")
     } else {
-      param <- paste0(param, "# Add fixed effects here\n\n")
+      param <- paste0(param, "# Add fixed effects here\n")
     }
     
     # Random effects
@@ -1038,10 +1037,10 @@ server <- function(input, output, session) {
       # Then add RANDOM diagonal
       param <- paste0(param, 
         "RANDOM\n",
-        "diagonal # Random effects section\n\n"
+        "diagonal # Random effects section\n"
       )
     } else {
-      param <- paste0(param, "# Add other random effects here\n\n")
+      param <- paste0(param, "# Add other random effects here\n")
     }
     
     # Animal effect
@@ -1053,33 +1052,43 @@ server <- function(input, output, session) {
         "animal # Animal random effect\n"
       )
       
-      # Add pedigree file information if available
-      if (has_ped) {
-        param <- paste0(param,
-          "FILE\n",
-          basename(input$ped_file$name), "\n",
-          "FILE_POS\n",
-          "1 2 3 # Progeny Sire Dam\n\n"
-        )
+      # Add pedigree file information (always present)
+      pedigree_filename <- if (has_ped) {
+        basename(input$ped_file$name)
       } else {
-        param <- paste0(param,
-          "FILE\n",
-          "pedigree.txt\n",
-          "FILE_POS\n",
-          "1 2 3 # Progeny Sire Dam\n\n"
-        )
+        "pedigree.txt"
       }
+      
+      param <- paste0(param,
+        "FILE\n",
+        pedigree_filename, "\n",
+        "FILE_POS\n",
+        "1 2 3 # Progeny Sire Dam\n"
+      )
     } else {
-      param <- paste0(param, "# Add animal random effect here\n\n")
+      param <- paste0(param, "# Add animal random effect here\n")
     }
     
-    # Genotype
+    # Genotype (only if uploaded)
     if (has_geno) {
+      # Get genotype file name without extension
+      # Look for either .ped or .map files
+      ped_files <- input$geno_file$name[grepl("\\.ped$", input$geno_file$name)]
+      map_files <- input$geno_file$name[grepl("\\.map$", input$geno_file$name)]
+      
+      geno_filename <- if (length(ped_files) > 0) {
+        tools::file_path_sans_ext(ped_files[1])
+      } else if (length(map_files) > 0) {
+        tools::file_path_sans_ext(map_files[1])
+      } else {
+        "genotype"
+      }
+      
       param <- paste0(param,
         "PLINK_FILE\n",
-        "genotype.txt # Genotype file name\n",
+        geno_filename, " # Genotype file name\n",
         "PED_DEPTH\n",
-        "0\n\n"
+        "0\n"
       )
     }
     
@@ -1203,6 +1212,7 @@ server <- function(input, output, session) {
     has_ped <- !is.null(input$ped_file) && nrow(input$ped_file) > 0
     has_geno <- !is.null(input$geno_file) && nrow(input$geno_file) > 0
     
+    
     # Build parameter file
     param <- paste0(
       "# PARAMETER FILE for renumf90\n",
@@ -1215,15 +1225,14 @@ server <- function(input, output, session) {
       
       "TRAITS # Specify trait columns\n",
       if (length(values$traits) > 0) get_col_num(values$traits) else "# Add trait column numbers here",
-      "\n\n",
+      "\n",
       
       "FIELDS_PASSED TO OUTPUT\n",
       "\n",
       "WEIGHT(S)\n",
       "\n",
       "RESIDUAL_COVARIANCE\n",
-      generate_covariance_matrix(length(values$traits)), "\n",
-      "\n"
+      generate_covariance_matrix(length(values$traits)), "\n"
     )
     
     # Fixed effects
@@ -1243,7 +1252,7 @@ server <- function(input, output, session) {
           effect_type <- "cross"
         } else if (n_unique > 20 || unique_ratio > 0.05) {
           effect_type <- "cov"
-        } else {
+      } else {
           effect_type <- "cross"
         }
         
@@ -1254,7 +1263,7 @@ server <- function(input, output, session) {
         )
       }
       param <- paste0(param, "\n")
-    } else {
+      } else {
       param <- paste0(param, "# Add fixed effects here\n\n")
     }
     
@@ -1273,7 +1282,7 @@ server <- function(input, output, session) {
         "RANDOM\n",
         "diagonal # Random effects section\n\n"
       )
-    } else {
+      } else {
       param <- paste0(param, "# Add other random effects here\n\n")
     }
     
@@ -1286,33 +1295,43 @@ server <- function(input, output, session) {
         "animal # Animal random effect\n"
       )
       
-      # Add pedigree file information if available
-      if (has_ped) {
-        param <- paste0(param,
-          "FILE\n",
-          basename(input$ped_file$name), "\n",
-          "FILE_POS\n",
-          "1 2 3 # Progeny Sire Dam\n\n"
-        )
+      # Add pedigree file information (always present)
+      pedigree_filename <- if (has_ped) {
+        basename(input$ped_file$name)
       } else {
-        param <- paste0(param,
-          "FILE\n",
-          "pedigree.txt\n",
-          "FILE_POS\n",
-          "1 2 3 # Progeny Sire Dam\n\n"
-        )
+        "pedigree.txt"
       }
+      
+      param <- paste0(param,
+        "FILE\n",
+        pedigree_filename, "\n",
+        "FILE_POS\n",
+        "1 2 3 # Progeny Sire Dam\n"
+      )
     } else {
-      param <- paste0(param, "# Add animal random effect here\n\n")
+      param <- paste0(param, "# Add animal random effect here\n")
     }
     
-    # Genotype
+    # Genotype (only if uploaded)
     if (has_geno) {
+      # Get genotype file name without extension
+      # Look for either .ped or .map files
+      ped_files <- input$geno_file$name[grepl("\\.ped$", input$geno_file$name)]
+      map_files <- input$geno_file$name[grepl("\\.map$", input$geno_file$name)]
+      
+      geno_filename <- if (length(ped_files) > 0) {
+        tools::file_path_sans_ext(ped_files[1])
+      } else if (length(map_files) > 0) {
+        tools::file_path_sans_ext(map_files[1])
+      } else {
+        "genotype"
+      }
+      
       param <- paste0(param,
         "PLINK_FILE\n",
-        "genotype.txt # Genotype file name\n",
+        geno_filename, " # Genotype file name\n",
         "PED_DEPTH\n",
-        "0\n\n"
+        "0\n"
       )
     }
     
