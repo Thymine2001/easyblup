@@ -887,6 +887,29 @@ server <- function(input, output, session) {
     }
   }
   
+  # Helpers to map selected variables to column indices
+  get_col_num_int <- function(vars) {
+    if (length(vars) == 0 || is.null(data())) return(integer(0))
+    which(colnames(data()) %in% vars)
+  }
+  
+  get_col_num <- function(vars) {
+    cols <- get_col_num_int(vars)
+    if (length(cols) == 0) return("")
+    paste(cols, collapse = " ")
+  }
+  
+  format_effect_cols <- function(vars, n_traits) {
+    cols <- get_col_num_int(vars)
+    if (length(cols) == 0 || n_traits == 0) return("")
+    if (length(cols) == 1) {
+      cols <- rep(cols, n_traits)
+    } else if (length(cols) != n_traits) {
+      cols <- rep(cols, length.out = n_traits)
+    }
+    paste(cols, collapse = " ")
+  }
+  
   # Helper function to generate heritability and genetic correlation functions
   generate_heritability_function <- function(traits, animal, random, fixed) {
     if (length(traits) == 0) {
@@ -959,13 +982,6 @@ server <- function(input, output, session) {
       return("Please upload a phenotype file first")
     }
     
-    # Get column numbers
-    get_col_num <- function(vars) {
-      if (length(vars) == 0) return("")
-      cols <- which(colnames(data()) %in% vars)
-      return(paste(cols, collapse = " "))
-    }
-    
     # Check pedigree and genotype files
     has_ped <- !is.null(input$ped_file) && nrow(input$ped_file) > 0
     has_geno <- !is.null(input$geno_file) && nrow(input$geno_file) > 0
@@ -979,8 +995,6 @@ server <- function(input, output, session) {
       basename(input$pheno_file$name), "\n",
       "SKIP_HEADER\n",
       "1\n",
-      "\n",
-      
       "TRAITS # Specify trait columns\n",
       if (length(values$traits) > 0) get_col_num(values$traits) else "# Add trait column numbers here",
       "\n",
@@ -989,7 +1003,7 @@ server <- function(input, output, session) {
       "\n",
       "WEIGHT(S)\n",
       "\n",
-      "RESIDUAL_COVARIANCE\n",
+      "RESIDUAL_VARIANCE\n",
       generate_covariance_matrix(length(values$traits)), "\n"
     )
     
@@ -1014,11 +1028,20 @@ server <- function(input, output, session) {
           effect_type <- "cross"
         }
         
-        param <- paste0(param, 
-          "EFFECT\n", 
-          get_col_num(eff), 
-          " ", effect_type, " alpha # ", eff, " fixed effect (", effect_type, ")\n"
-        )
+        # Repeat effect for each trait
+        n_traits <- length(values$traits)
+        effect_cols <- format_effect_cols(eff, n_traits)
+        if (nzchar(effect_cols)) {
+          param <- paste0(param,
+            "EFFECT\n",
+            effect_cols, " ", effect_type, " alpha # ", eff, " fixed effect (", effect_type, ") (trait order: 1, 2, ...)\n"
+          )
+        } else {
+          param <- paste0(param,
+            "EFFECT\n",
+            "# Add column numbers for ", eff, " (one per trait)\n"
+          )
+        }
       }
     } else {
       param <- paste0(param, "# Add fixed effects here\n")
@@ -1028,11 +1051,20 @@ server <- function(input, output, session) {
     if (length(values$random) > 0) {
       # First add all EFFECT lines
       for (eff in values$random) {
-        param <- paste0(param, 
-          "EFFECT\n", 
-          get_col_num(eff), 
-          " cross alpha # ", eff, " random effect\n"
-        )
+        # Repeat effect for each trait
+        n_traits <- length(values$traits)
+        effect_cols <- format_effect_cols(eff, n_traits)
+        if (nzchar(effect_cols)) {
+          param <- paste0(param,
+            "EFFECT\n",
+            effect_cols, " cross alpha # ", eff, " random effect (trait order: 1, 2, ...)\n"
+          )
+        } else {
+          param <- paste0(param,
+            "EFFECT\n",
+            "# Add column numbers for ", eff, " random effect (one per trait)\n"
+          )
+        }
       }
       # Then add RANDOM diagonal
       param <- paste0(param, 
@@ -1045,9 +1077,21 @@ server <- function(input, output, session) {
     
     # Animal effect
     if (length(values$animal) > 0) {
+      # Repeat animal effect for each trait
+      n_traits <- length(values$traits)
+      effect_cols <- format_effect_cols(values$animal, n_traits)
+      if (nzchar(effect_cols)) {
+        param <- paste0(param,
+          "EFFECT\n",
+          effect_cols, " cross alpha # Animal ID effect (trait order: 1, 2, ...)\n"
+        )
+      } else {
+        param <- paste0(param,
+          "EFFECT\n",
+          "# Add column numbers for animal ID (one per trait)\n"
+        )
+      }
       param <- paste0(param,
-        "EFFECT\n",
-        get_col_num(values$animal), " cross alpha # Animal ID effect\n",
         "RANDOM\n",
         "animal # Animal random effect\n"
       )
@@ -1201,13 +1245,6 @@ server <- function(input, output, session) {
       return("Please upload a phenotype file first")
     }
     
-    # Get column numbers
-    get_col_num <- function(vars) {
-      if (length(vars) == 0) return("")
-      cols <- which(colnames(data()) %in% vars)
-      return(paste(cols, collapse = " "))
-    }
-    
     # Check pedigree and genotype files
     has_ped <- !is.null(input$ped_file) && nrow(input$ped_file) > 0
     has_geno <- !is.null(input$geno_file) && nrow(input$geno_file) > 0
@@ -1221,8 +1258,6 @@ server <- function(input, output, session) {
       basename(input$pheno_file$name), "\n",
       "SKIP_HEADER\n",
       "1\n",
-      "\n",
-      
       "TRAITS # Specify trait columns\n",
       if (length(values$traits) > 0) get_col_num(values$traits) else "# Add trait column numbers here",
       "\n",
@@ -1231,7 +1266,7 @@ server <- function(input, output, session) {
       "\n",
       "WEIGHT(S)\n",
       "\n",
-      "RESIDUAL_COVARIANCE\n",
+      "RESIDUAL_VARIANCE\n",
       generate_covariance_matrix(length(values$traits)), "\n"
     )
     
@@ -1252,18 +1287,27 @@ server <- function(input, output, session) {
           effect_type <- "cross"
         } else if (n_unique > 20 || unique_ratio > 0.05) {
           effect_type <- "cov"
-      } else {
+        } else {
           effect_type <- "cross"
         }
         
-        param <- paste0(param, 
-          "EFFECT\n", 
-          get_col_num(eff), 
-          " ", effect_type, " alpha # ", eff, " fixed effect (", effect_type, ")\n"
-        )
+        # Repeat effect for each trait once per EFFECT line
+        n_traits <- length(values$traits)
+        effect_cols <- format_effect_cols(eff, n_traits)
+        if (nzchar(effect_cols)) {
+          param <- paste0(param,
+            "EFFECT\n",
+            effect_cols, " ", effect_type, " alpha # ", eff, " fixed effect (", effect_type, ") (trait order: 1, 2, ...)\n"
+          )
+        } else {
+          param <- paste0(param,
+            "EFFECT\n",
+            "# Add column numbers for ", eff, " (one per trait)\n"
+          )
+        }
       }
       param <- paste0(param, "\n")
-      } else {
+    } else {
       param <- paste0(param, "# Add fixed effects here\n\n")
     }
     
@@ -1271,26 +1315,47 @@ server <- function(input, output, session) {
     if (length(values$random) > 0) {
       # First add all EFFECT lines
       for (eff in values$random) {
-        param <- paste0(param, 
-          "EFFECT\n", 
-          get_col_num(eff), 
-          " cross alpha # ", eff, " random effect\n"
-        )
+        # Repeat effect for each trait once per EFFECT line
+        n_traits <- length(values$traits)
+        effect_cols <- format_effect_cols(eff, n_traits)
+        if (nzchar(effect_cols)) {
+          param <- paste0(param,
+            "EFFECT\n",
+            effect_cols, " cross alpha # ", eff, " random effect (trait order: 1, 2, ...)\n"
+          )
+        } else {
+          param <- paste0(param,
+            "EFFECT\n",
+            "# Add column numbers for ", eff, " random effect (one per trait)\n"
+          )
+        }
       }
       # Then add RANDOM diagonal
       param <- paste0(param, 
         "RANDOM\n",
         "diagonal # Random effects section\n\n"
       )
-      } else {
+    } else {
       param <- paste0(param, "# Add other random effects here\n\n")
     }
     
     # Animal effect
     if (length(values$animal) > 0) {
+      # Repeat animal effect for each trait
+      n_traits <- length(values$traits)
+      effect_cols <- format_effect_cols(values$animal, n_traits)
+      if (nzchar(effect_cols)) {
+        param <- paste0(param,
+          "EFFECT\n",
+          effect_cols, " cross alpha # Animal ID effect (trait order: 1, 2, ...)\n"
+        )
+      } else {
+        param <- paste0(param,
+          "EFFECT\n",
+          "# Add column numbers for animal ID (one per trait)\n"
+        )
+      }
       param <- paste0(param,
-        "EFFECT\n",
-        get_col_num(values$animal), " cross alpha # Animal ID effect\n",
         "RANDOM\n",
         "animal # Animal random effect\n"
       )

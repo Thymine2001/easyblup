@@ -978,8 +978,6 @@ server <- function(input, output, session) {
       basename(input$pheno_file$name), "\n",
       "SKIP_HEADER\n",
       "1\n",
-      "\n",
-      
       "TRAITS # Specify trait columns\n",
       if (length(values$traits) > 0) get_col_num(values$traits) else "# Add trait column numbers here",
       "\n\n",
@@ -988,7 +986,7 @@ server <- function(input, output, session) {
       "\n",
       "WEIGHT(S)\n",
       "\n",
-      "RESIDUAL_COVARIANCE\n",
+      "RESIDUAL_VARIANCE\n",
       generate_covariance_matrix(length(values$traits)), "\n",
       "\n"
     )
@@ -1014,11 +1012,15 @@ server <- function(input, output, session) {
           effect_type <- "cross"
         }
         
-        param <- paste0(param, 
-          "EFFECT\n", 
-          get_col_num(eff), 
-          " ", effect_type, " alpha # ", eff, " fixed effect (", effect_type, ")\n"
-        )
+        # Repeat effect for each trait
+        n_traits <- length(values$traits)
+        for (trait_idx in 1:n_traits) {
+          param <- paste0(param, 
+            "EFFECT\n", 
+            get_col_num(eff), 
+            " ", effect_type, " alpha # ", eff, " fixed effect (", effect_type, ") for trait ", trait_idx, "\n"
+          )
+        }
       }
       param <- paste0(param, "\n")
     } else {
@@ -1029,11 +1031,15 @@ server <- function(input, output, session) {
     if (length(values$random) > 0) {
       # First add all EFFECT lines
       for (eff in values$random) {
-        param <- paste0(param, 
-          "EFFECT\n", 
-          get_col_num(eff), 
-          " cross alpha # ", eff, " random effect\n"
-        )
+        # Repeat effect for each trait
+        n_traits <- length(values$traits)
+        for (trait_idx in 1:n_traits) {
+          param <- paste0(param, 
+            "EFFECT\n", 
+            get_col_num(eff), 
+            " cross alpha # ", eff, " random effect for trait ", trait_idx, "\n"
+          )
+        }
       }
       # Then add RANDOM diagonal
       param <- paste0(param, 
@@ -1046,9 +1052,15 @@ server <- function(input, output, session) {
     
     # Animal effect
     if (length(values$animal) > 0) {
+      # Repeat animal effect for each trait
+      n_traits <- length(values$traits)
+      for (trait_idx in 1:n_traits) {
+        param <- paste0(param,
+          "EFFECT\n",
+          get_col_num(values$animal), " cross alpha # Animal ID effect for trait ", trait_idx, "\n"
+        )
+      }
       param <- paste0(param,
-        "EFFECT\n",
-        get_col_num(values$animal), " cross alpha # Animal ID effect\n",
         "RANDOM\n",
         "animal # Animal random effect\n"
       )
@@ -1211,8 +1223,6 @@ server <- function(input, output, session) {
       basename(input$pheno_file$name), "\n",
       "SKIP_HEADER\n",
       "1\n",
-      "\n",
-      
       "TRAITS # Specify trait columns\n",
       if (length(values$traits) > 0) get_col_num(values$traits) else "# Add trait column numbers here",
       "\n\n",
@@ -1221,7 +1231,7 @@ server <- function(input, output, session) {
       "\n",
       "WEIGHT(S)\n",
       "\n",
-      "RESIDUAL_COVARIANCE\n",
+      "RESIDUAL_VARIANCE\n",
       generate_covariance_matrix(length(values$traits)), "\n",
       "\n"
     )
@@ -1247,11 +1257,15 @@ server <- function(input, output, session) {
           effect_type <- "cross"
         }
         
-        param <- paste0(param, 
-          "EFFECT\n", 
-          get_col_num(eff), 
-          " ", effect_type, " alpha # ", eff, " fixed effect (", effect_type, ")\n"
-        )
+        # Repeat effect for each trait
+        n_traits <- length(values$traits)
+        for (trait_idx in 1:n_traits) {
+          param <- paste0(param, 
+            "EFFECT\n", 
+            get_col_num(eff), 
+            " ", effect_type, " alpha # ", eff, " fixed effect (", effect_type, ") for trait ", trait_idx, "\n"
+          )
+        }
       }
       param <- paste0(param, "\n")
     } else {
@@ -1262,11 +1276,15 @@ server <- function(input, output, session) {
     if (length(values$random) > 0) {
       # First add all EFFECT lines
       for (eff in values$random) {
-        param <- paste0(param, 
-          "EFFECT\n", 
-          get_col_num(eff), 
-          " cross alpha # ", eff, " random effect\n"
-        )
+        # Repeat effect for each trait
+        n_traits <- length(values$traits)
+        for (trait_idx in 1:n_traits) {
+          param <- paste0(param, 
+            "EFFECT\n", 
+            get_col_num(eff), 
+            " cross alpha # ", eff, " random effect for trait ", trait_idx, "\n"
+          )
+        }
       }
       # Then add RANDOM diagonal
       param <- paste0(param, 
@@ -1279,9 +1297,15 @@ server <- function(input, output, session) {
     
     # Animal effect
     if (length(values$animal) > 0) {
+      # Repeat animal effect for each trait
+      n_traits <- length(values$traits)
+      for (trait_idx in 1:n_traits) {
+        param <- paste0(param,
+          "EFFECT\n",
+          get_col_num(values$animal), " cross alpha # Animal ID effect for trait ", trait_idx, "\n"
+        )
+      }
       param <- paste0(param,
-        "EFFECT\n",
-        get_col_num(values$animal), " cross alpha # Animal ID effect\n",
         "RANDOM\n",
         "animal # Animal random effect\n"
       )
