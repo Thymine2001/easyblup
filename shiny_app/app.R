@@ -871,16 +871,23 @@ server <- function(input, output, session) {
     
     # Generate matrix values
     # For single trait: 0.1
-    # For two traits: 0.1 0.1\n0.1 0.1 (2x2 matrix)
-    # For three traits: 0.1 0.1 0.1\n0.1 0.1 0.1\n0.1 0.1 0.1 (3x3 matrix)
+    # For two traits: 1 0.01\n0.01 1 (2x2 matrix)
+    # For three traits: 1 0.01 0.01\n0.01 1 0.01\n0.01 0.01 1 (3x3 matrix)
     
     if (n_traits == 1) {
       return("0.1")
     } else {
-      # Generate matrix rows
+      # Generate matrix rows with diagonal = 1, off-diagonal = 0.01
       matrix_rows <- c()
       for (i in 1:n_traits) {
-        row_values <- rep("0.1", n_traits)
+        row_values <- c()
+        for (j in 1:n_traits) {
+          if (i == j) {
+            row_values <- c(row_values, "1")
+          } else {
+            row_values <- c(row_values, "0.01")
+          }
+        }
         matrix_rows <- c(matrix_rows, paste(row_values, collapse = " "))
       }
       return(paste(matrix_rows, collapse = "\n"))
@@ -932,6 +939,11 @@ server <- function(input, output, session) {
     # Generate heritability functions for each trait
     h2_functions <- c()
     
+    # Add comment for heritabilities
+    if (n_traits > 0) {
+      h2_functions <- c(h2_functions, "# Heritabilities (h²)")
+    }
+    
     for (i in 1:n_traits) {
       # Genetic variance: G_effect_effect_trait_trait
       genetic_var <- paste0("G_", animal_effect_num, "_", animal_effect_num, "_", i, "_", i)
@@ -947,6 +959,29 @@ server <- function(input, output, session) {
     
     # Generate genetic correlation functions for all trait pairs
     if (n_traits > 1) {
+      h2_functions <- c(h2_functions, "", "# Genetic correlations (rg)")
+      
+      for (i in 1:(n_traits-1)) {
+        for (j in (i+1):n_traits) {
+          # Genetic covariance between traits i and j
+          genetic_cov <- paste0("G_", animal_effect_num, "_", animal_effect_num, "_", i, "_", j)
+          
+          # Genetic variances
+          genetic_var_i <- paste0("G_", animal_effect_num, "_", animal_effect_num, "_", i, "_", i)
+          genetic_var_j <- paste0("G_", animal_effect_num, "_", animal_effect_num, "_", j, "_", j)
+          
+          # Genetic correlation formula: rg_ij = G_ij / sqrt(G_ii * G_jj)
+          rg_formula <- paste0("rg_", i, j, " ", genetic_cov, "/((", genetic_var_i, "*", genetic_var_j, ")**0.5)")
+          
+          h2_functions <- c(h2_functions, paste0("OPTION se_covar_function ", rg_formula))
+        }
+      }
+    }
+    
+    # Generate phenotypic correlation functions for all trait pairs
+    if (n_traits > 1) {
+      h2_functions <- c(h2_functions, "", "# Phenotypic correlations (rp)")
+      
       for (i in 1:(n_traits-1)) {
         for (j in (i+1):n_traits) {
           # Genetic covariance between traits i and j
@@ -963,7 +998,7 @@ server <- function(input, output, session) {
           residual_var_i <- paste0("R_", i, "_", i)
           residual_var_j <- paste0("R_", j, "_", j)
           
-          # Genetic correlation formula: rp_ij = (G_ij + R_ij) / sqrt((G_ii + R_ii) * (G_jj + R_jj))
+          # Phenotypic correlation formula: rp_ij = (G_ij + R_ij) / sqrt((G_ii + R_ii) * (G_jj + R_jj))
           rp_formula <- paste0("rp_", i, j, " (", genetic_cov, "+", residual_cov, ")/((", 
                               genetic_var_i, "+", residual_var_i, ")*(", 
                               genetic_var_j, "+", residual_var_j, "))**0.5")
@@ -1012,9 +1047,12 @@ server <- function(input, output, session) {
       for (eff in values$fixed) {
         # Determine effect type based on data characteristics
         col_data <- data()[[eff]]
-        n_unique <- length(unique(col_data))
-        n_total <- length(col_data)
-        unique_ratio <- n_unique / n_total
+        if (is.null(col_data) || length(col_data) == 0) {
+          effect_type <- "cross"
+        } else {
+          n_unique <- length(unique(col_data))
+          n_total <- length(col_data)
+          unique_ratio <- if (n_total > 0) n_unique / n_total else 0
         
         # Apply new criteria:
         # >20 levels OR unique/n > 0.05 → cov
@@ -1022,10 +1060,11 @@ server <- function(input, output, session) {
         # character → cross
         if (is.character(col_data)) {
           effect_type <- "cross"
-        } else if (n_unique > 20 || unique_ratio > 0.05) {
+        } else if ((!is.na(n_unique) && n_unique > 20) || (!is.na(unique_ratio) && unique_ratio > 0.05)) {
           effect_type <- "cov"
         } else {
           effect_type <- "cross"
+        }
         }
         
         # Repeat effect for each trait
@@ -1275,9 +1314,12 @@ server <- function(input, output, session) {
       for (eff in values$fixed) {
         # Determine effect type based on data characteristics
         col_data <- data()[[eff]]
-        n_unique <- length(unique(col_data))
-        n_total <- length(col_data)
-        unique_ratio <- n_unique / n_total
+        if (is.null(col_data) || length(col_data) == 0) {
+          effect_type <- "cross"
+        } else {
+          n_unique <- length(unique(col_data))
+          n_total <- length(col_data)
+          unique_ratio <- if (n_total > 0) n_unique / n_total else 0
         
         # Apply new criteria:
         # >20 levels OR unique/n > 0.05 → cov
@@ -1285,10 +1327,11 @@ server <- function(input, output, session) {
         # character → cross
         if (is.character(col_data)) {
           effect_type <- "cross"
-        } else if (n_unique > 20 || unique_ratio > 0.05) {
+        } else if ((!is.na(n_unique) && n_unique > 20) || (!is.na(unique_ratio) && unique_ratio > 0.05)) {
           effect_type <- "cov"
         } else {
           effect_type <- "cross"
+        }
         }
         
         # Repeat effect for each trait once per EFFECT line
