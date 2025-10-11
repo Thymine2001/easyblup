@@ -3,7 +3,6 @@
 
 library(shiny)
 library(sortable)
-library(shinyjqui)
 
 # Define UI
 ui <- fluidPage(
@@ -459,6 +458,17 @@ ui <- fluidPage(
         document.body.removeChild(a);
         window.URL.revokeObjectURL(url);
       });
+      
+      // Handle getting textarea content
+      Shiny.addCustomMessageHandler('get_textarea_content', function(message) {
+        var content = document.getElementById('param_editor').value;
+        Shiny.setInputValue('textarea_content', content);
+      });
+      
+      // Handle updating textarea content
+      Shiny.addCustomMessageHandler('update_textarea', function(message) {
+        document.getElementById('param_editor').value = message.content;
+      });
     "))
   ),
   
@@ -470,8 +480,8 @@ ui <- fluidPage(
   fluidRow(
     # Left sidebar - File upload and parameter options
     column(3,
-      jqui_resizable(
       wellPanel(
+        class = "resizable-panel",
         h3("📁 Data Upload"),
         fileInput("pheno_file", "Upload Phenotype File", accept = c(".txt", ".dat", ".csv")),
         fileInput("ped_file", "Upload Pedigree File (Optional)", 
@@ -480,16 +490,10 @@ ui <- fluidPage(
                  accept = c(".ped", ".map"), multiple = TRUE),
         actionButton("clear_all", "Clear All", class = "btn-danger")
       ),
-        options = list(
-          minHeight = 200,
-          maxHeight = 500,
-          handles = "s"
-        )
-      ),
       
       # Parameter Options Panel
-      jqui_resizable(
       wellPanel(
+        class = "resizable-panel",
         h3("⚙️ Parameter Options"),
         div(style = "max-height: 300px; overflow-y: auto;",
           # Basic Options
@@ -548,14 +552,47 @@ ui <- fluidPage(
           checkboxInput("opt_em_reml", "EM-REML 100", value = TRUE),
           checkboxInput("opt_use_yams", "use-yams", value = TRUE),
           checkboxInput("opt_tuned_g2", "tunedG2", value = TRUE),
-          checkboxInput("opt_maxrounds", "maxrounds 1000000", value = TRUE)
-        )
-      ),
-        options = list(
-          minHeight = 300,
-          maxHeight = 600,
-          handles = "s"
-        )
+          checkboxInput("opt_maxrounds", "maxrounds 1000000", value = TRUE),
+          
+          # Solution Output Options
+          h5("Solution Output Options", style = "color: #B8860B; font-weight: bold; margin-top: 15px;"),
+          checkboxInput("opt_origID", "origID - Store solutions with original ID", value = FALSE),
+          
+          # Accuracy and Reliability Options
+          h5("Accuracy & Reliability Options", style = "color: #B8860B; font-weight: bold; margin-top: 15px;"),
+          div(style = "display: flex; align-items: center; gap: 10px;",
+            checkboxInput("opt_store_accuracy", "store_accuracy:", value = FALSE),
+            numericInput("opt_store_accuracy_eff", "Effect # (Auto-calculates for animal)", value = 1, min = 1, max = 20, step = 1, width = "120px")
+          ),
+          p("💡 Effect number auto-updates based on model structure (Fixed + Random + 1)", 
+            style = "color: #666; font-size: 11px; margin: 5px 0; font-style: italic;"),
+          checkboxInput("opt_store_accuracy_orig", "store_accuracy with original ID", value = FALSE),
+          div(style = "display: flex; align-items: center; gap: 10px;",
+            checkboxInput("opt_acctype", "acctype:", value = FALSE),
+            selectInput("opt_acctype_value", "", 
+                       choices = list(
+                         "1.0 (Dairy cattle - Reliability)" = "1.0",
+                         "0.5 (Beef cattle - BIF accuracy)" = "0.5"
+                       ), selected = "1.0", width = "200px")
+          ),
+          div(style = "display: flex; align-items: center; gap: 10px;",
+            checkboxInput("opt_correct_accuracy_by_inbreeding", "correct_accuracy_by_inbreeding:", value = FALSE),
+            textInput("opt_inbreeding_filename", "Filename", value = "renf90.inb", width = "120px")
+          ),
+          checkboxInput("opt_correct_accuracy_by_inbreeding_direct", "correct_accuracy_by_inbreeding_direct 0", value = FALSE),
+          
+          # REML Specific Options
+          h5("REML Specific Options", style = "color: #B8860B; font-weight: bold; margin-top: 15px;"),
+          div(style = "display: flex; align-items: center; gap: 10px;",
+            checkboxInput("opt_conv_crit_custom", "Custom conv_crit:", value = FALSE),
+            textInput("opt_conv_crit_value", "", value = "1d-12", width = "80px")
+          ),
+          div(style = "display: flex; align-items: center; gap: 10px;",
+          checkboxInput("opt_maxrounds_custom", "Custom maxrounds:", value = FALSE),
+          numericInput("opt_maxrounds_value", "", value = 1000, min = 0, max = 100000, step = 100, width = "100px")
+        ),
+        checkboxInput("opt_no_accelerate_EM", "no_accelerate_EM - Disable EM acceleration", value = FALSE)
+      )
       )
     ),
     
@@ -566,81 +603,89 @@ ui <- fluidPage(
         # Left side: Variables and Parameter Preview stacked
         column(6,
           # Variables (top half) - Resizable
-          jqui_resizable(
-            wellPanel(
-              class = "resizable-panel",
-              h3("📋 Available Variables"),
-              p("Drag variables to model components:", style = "color: #666; font-size: 12px; margin-bottom: 10px;"),
-              div(id = "variables_container", style = "height: calc(100% - 60px); overflow-y: auto; border: 1px solid #ddd; padding: 10px; background-color: #f9f9f9;",
-                uiOutput("variable_list")
-              )
-            ),
-            options = list(
-              minHeight = 150,
-              maxHeight = 400,
-              handles = "s"
+          wellPanel(
+            class = "resizable-panel",
+            h3("📋 Available Variables"),
+            p("Drag variables to model components:", style = "color: #666; font-size: 12px; margin-bottom: 10px;"),
+            div(id = "variables_container", style = "height: calc(100% - 60px); overflow-y: auto; border: 1px solid #ddd; padding: 10px; background-color: #f9f9f9;",
+              uiOutput("variable_list")
             )
           ),
           
           # Parameter preview (bottom half) - Resizable
-          jqui_resizable(
-            wellPanel(
-              class = "resizable-panel",
-              h3("📄 Parameter File Preview"),
-              div(style = "margin-bottom: 10px;",
-                actionButton("download_param", "📥 Download Parameter File", 
-                           class = "btn btn-success btn-sm")
-              ),
-              div(id = "param_container", style = "height: calc(100% - 100px); overflow-y: auto; border: 1px solid #ddd; padding: 10px; background-color: #f9f9f9;",
-                verbatimTextOutput("param_output")
-              )
+          wellPanel(
+            class = "resizable-panel",
+            h3("📄 Parameter File Preview"),
+            div(style = "margin-bottom: 10px; display: flex; gap: 10px;",
+              actionButton("reset_param", "🔄 Reset to Default", 
+                         class = "btn btn-success btn-sm",
+                         style = "margin-right: 5px;"),
+              actionButton("download_param", "📥 Download Parameter File", 
+                         class = "btn btn-success btn-sm")
             ),
-            options = list(
-              minHeight = 150,
-              maxHeight = 400,
-              handles = "s"
+            p("✏️ You can directly edit the parameter file below", 
+              style = "color: #666; font-size: 11px; margin: 5px 0; font-style: italic;"),
+            div(id = "param_container", style = "height: calc(100% - 120px); overflow-y: auto;",
+              tags$textarea(
+                id = "param_editor",
+                style = "width: 100%; height: 300px; font-family: 'Courier New', monospace; font-size: 12px; border: 1px solid #ddd; padding: 10px; background-color: #f9f9f9; resize: vertical;",
+                placeholder = "Parameter file will appear here..."
+              )
             )
           )
         ),
         
         # Model Definition (right half) - Resizable
         column(6,
-          jqui_resizable(
-            wellPanel(
-              class = "resizable-panel",
-              h3("📐 Model Definition"),
-            p("💡 Double-click any variable to remove it", style = "color: #666; font-size: 11px; margin-bottom: 5px; font-style: italic;"),
-            p("🔍 Effect types auto-detected: cov (>20 levels OR unique/n > 0.05), cross (≤20 levels OR character)", style = "color: #666; font-size: 10px; margin-bottom: 10px; font-style: italic;"),
-              div(id = "model_container", style = "height: calc(100% - 60px); overflow-y: auto;",
-                # Traits
-                div(style = "border: 2px dashed #ffa500; padding: 10px; margin: 5px 0; background-color: #fff8e1; min-height: 80px;",
-                  h5("🧬 Traits (y)", style = "margin: 0 0 5px 0; font-size: 14px;"),
-                  uiOutput("traits_drop_zone")
+          wellPanel(
+            class = "resizable-panel",
+            h3("📐 Model Definition"),
+          p("💡 Double-click any variable to remove it", style = "color: #666; font-size: 11px; margin-bottom: 5px; font-style: italic;"),
+          p("🔍 Effect types auto-detected: cov (>20 levels OR unique/n > 0.05), cross (≤20 levels OR character)", style = "color: #666; font-size: 10px; margin-bottom: 10px; font-style: italic;"),
+            div(id = "model_container", style = "height: calc(100% - 60px); overflow-y: auto;",
+              # Traits
+              div(style = "border: 2px dashed #ffa500; padding: 10px; margin: 5px 0; background-color: #fff8e1; min-height: 80px;",
+                h5("🧬 Traits (y)", style = "margin: 0 0 5px 0; font-size: 14px;"),
+                uiOutput("traits_drop_zone")
+              ),
+              
+              # Fixed Effects
+              div(style = "border: 2px dashed #ff6b6b; padding: 10px; margin: 5px 0; background-color: #ffebee; min-height: 80px;",
+                h5("📊 Fixed Effects (b)", style = "margin: 0 0 5px 0; font-size: 14px;"),
+                uiOutput("fixed_drop_zone")
+              ),
+              
+              # Animal ID
+              div(style = "border: 2px dashed #28a745; padding: 10px; margin: 5px 0; background-color: #e8f5e8; min-height: 80px;",
+                h5("🐄 Animal ID (a)", style = "margin: 0 0 5px 0; font-size: 14px;"),
+                uiOutput("animal_drop_zone")
+              ),
+              
+              # Random Effects
+              div(style = "border: 2px dashed #007bff; padding: 10px; margin: 5px 0; background-color: #e3f2fd; min-height: 80px;",
+                h5("🎲 Random Effects (r)", style = "margin: 0 0 5px 0; font-size: 14px;"),
+                uiOutput("random_drop_zone")
+              ),
+              
+              # Additional Effects Options
+              div(style = "border: 2px dashed #9c27b0; padding: 10px; margin: 5px 0; background-color: #f3e5f5; min-height: 100px;",
+                h5("➕ Additional Effects (Optional)", style = "margin: 0 0 10px 0; font-size: 14px; color: #9c27b0; font-weight: bold;"),
+                div(style = "display: flex; flex-wrap: wrap; gap: 15px;",
+                  div(
+                    checkboxInput("opt_pe", "PE", value = FALSE),
+                    p("Permanent Environmental", style = "font-size: 10px; margin: 0; color: #666;")
+                  ),
+                  div(
+                    checkboxInput("opt_mat", "MAT", value = FALSE),
+                    p("Maternal Effect", style = "font-size: 10px; margin: 0; color: #666;")
+                  ),
+                  div(
+                    checkboxInput("opt_mpe", "MPE", value = FALSE),
+                    p("Maternal Permanent Env.", style = "font-size: 10px; margin: 0; color: #666;")
+                  )
                 ),
-                
-                # Fixed Effects
-                div(style = "border: 2px dashed #ff6b6b; padding: 10px; margin: 5px 0; background-color: #ffebee; min-height: 80px;",
-                  h5("📊 Fixed Effects (b)", style = "margin: 0 0 5px 0; font-size: 14px;"),
-                  uiOutput("fixed_drop_zone")
-                ),
-                
-                # Animal ID
-                div(style = "border: 2px dashed #28a745; padding: 10px; margin: 5px 0; background-color: #e8f5e8; min-height: 80px;",
-                  h5("🐄 Animal ID (a)", style = "margin: 0 0 5px 0; font-size: 14px;"),
-                  uiOutput("animal_drop_zone")
-                ),
-                
-                # Random Effects
-                div(style = "border: 2px dashed #007bff; padding: 10px; margin: 5px 0; background-color: #e3f2fd; min-height: 80px;",
-                  h5("🎲 Random Effects (r)", style = "margin: 0 0 5px 0; font-size: 14px;"),
-                  uiOutput("random_drop_zone")
-                )
+                p("💡 These will add OPTIONAL effects to the animal model", style = "color: #666; font-size: 10px; margin: 5px 0 0 0; font-style: italic;")
               )
-            ),
-            options = list(
-              minHeight = 300,
-              maxHeight = 600,
-              handles = "s"
             )
           )
         )
@@ -660,8 +705,34 @@ server <- function(input, output, session) {
     traits = c(),
     fixed = c(),
     animal = c(),
-    random = c()
+    random = c(),
+    default_param = "",  # Store default generated parameter
+    current_param = ""   # Store current (possibly edited) parameter
   )
+  
+  # Calculate animal effect number reactively
+  animal_effect_number <- reactive({
+    # Effect numbering in BLUPF90:
+    # 1. Fixed effects (each fixed effect gets 1 number)
+    # 2. Other random effects (each random effect gets 1 number) 
+    # 3. Animal effect (gets 1 number)
+    
+    n_fixed <- length(values$fixed)
+    n_random <- length(values$random)
+    
+    # Animal effect number = total fixed effects + total random effects + 1
+    animal_effect_num <- n_fixed + n_random + 1
+    
+    return(animal_effect_num)
+  })
+  
+  # Update animal effect number in store_accuracy input
+  observe({
+    animal_num <- animal_effect_number()
+    updateNumericInput(session, "opt_store_accuracy_eff", 
+                      value = animal_num,
+                      label = paste0("Effect # (Animal effect: ", animal_num, ")"))
+  })
   
   # Read data
   data <- reactive({
@@ -1011,19 +1082,18 @@ server <- function(input, output, session) {
     return(paste(h2_functions, collapse = "\n"))
   }
   
-  # Generate parameter file
-  output$param_output <- renderText({
+  # Generate and update parameter file in textarea
+  observe({
     if (is.null(data())) {
-      return("Please upload a phenotype file first")
-    }
-    
-    # Check pedigree and genotype files
-    has_ped <- !is.null(input$ped_file) && nrow(input$ped_file) > 0
-    has_geno <- !is.null(input$geno_file) && nrow(input$geno_file) > 0
+      param_text <- "Please upload a phenotype file first"
+    } else {
+      # Check pedigree and genotype files
+      has_ped <- !is.null(input$ped_file) && nrow(input$ped_file) > 0
+      has_geno <- !is.null(input$geno_file) && nrow(input$geno_file) > 0
     
     
     # Build parameter file
-    param <- paste0(
+    param_text <- paste0(
       "# PARAMETER FILE for renumf90\n",
       "# \n",
       "DATAFILE\n",
@@ -1071,19 +1141,19 @@ server <- function(input, output, session) {
         n_traits <- length(values$traits)
         effect_cols <- format_effect_cols(eff, n_traits)
         if (nzchar(effect_cols)) {
-          param <- paste0(param,
+          param_text <- paste0(param_text,
             "EFFECT\n",
             effect_cols, " ", effect_type, " alpha # ", eff, " fixed effect (", effect_type, ") (trait order: 1, 2, ...)\n"
           )
         } else {
-          param <- paste0(param,
+          param_text <- paste0(param_text,
             "EFFECT\n",
             "# Add column numbers for ", eff, " (one per trait)\n"
           )
         }
       }
     } else {
-      param <- paste0(param, "# Add fixed effects here\n")
+      param_text <- paste0(param_text, "# Add fixed effects here\n")
     }
     
     # Random effects
@@ -1094,24 +1164,24 @@ server <- function(input, output, session) {
         n_traits <- length(values$traits)
         effect_cols <- format_effect_cols(eff, n_traits)
         if (nzchar(effect_cols)) {
-          param <- paste0(param,
+          param_text <- paste0(param_text,
             "EFFECT\n",
             effect_cols, " cross alpha # ", eff, " random effect (trait order: 1, 2, ...)\n"
           )
         } else {
-          param <- paste0(param,
+          param_text <- paste0(param_text,
             "EFFECT\n",
             "# Add column numbers for ", eff, " random effect (one per trait)\n"
           )
         }
       }
       # Then add RANDOM diagonal
-      param <- paste0(param, 
+      param_text <- paste0(param_text, 
         "RANDOM\n",
         "diagonal # Random effects section\n"
       )
     } else {
-      param <- paste0(param, "# Add other random effects here\n")
+      param_text <- paste0(param_text, "# Add other random effects here\n")
     }
     
     # Animal effect
@@ -1120,20 +1190,38 @@ server <- function(input, output, session) {
       n_traits <- length(values$traits)
       effect_cols <- format_effect_cols(values$animal, n_traits)
       if (nzchar(effect_cols)) {
-        param <- paste0(param,
+        param_text <- paste0(param_text,
           "EFFECT\n",
           effect_cols, " cross alpha # Animal ID effect (trait order: 1, 2, ...)\n"
         )
       } else {
-        param <- paste0(param,
+        param_text <- paste0(param_text,
           "EFFECT\n",
           "# Add column numbers for animal ID (one per trait)\n"
         )
       }
-      param <- paste0(param,
+      param_text <- paste0(param_text,
         "RANDOM\n",
         "animal # Animal random effect\n"
       )
+      
+      # Add OPTIONAL effects if any are selected
+      optional_effects <- c()
+      if (input$opt_pe) optional_effects <- c(optional_effects, "pe")
+      if (input$opt_mat) optional_effects <- c(optional_effects, "mat")
+      if (input$opt_mpe) optional_effects <- c(optional_effects, "mpe")
+      
+      if (length(optional_effects) > 0) {
+        param_text <- paste0(param_text,
+          "OPTIONAL\n",
+          paste(optional_effects, collapse = " "), " # ", 
+          paste(c(
+            if ("pe" %in% optional_effects) "Permanent environmental effect",
+            if ("mat" %in% optional_effects) "maternal effect", 
+            if ("mpe" %in% optional_effects) "maternal permanent environmental effect"
+          ), collapse = ", "), "\n"
+        )
+      }
       
       # Add pedigree file information (always present)
       pedigree_filename <- if (has_ped) {
@@ -1142,14 +1230,14 @@ server <- function(input, output, session) {
         "pedigree.txt"
       }
       
-      param <- paste0(param,
+      param_text <- paste0(param_text,
         "FILE\n",
         pedigree_filename, "\n",
         "FILE_POS\n",
         "1 2 3 # Progeny Sire Dam\n"
       )
     } else {
-      param <- paste0(param, "# Add animal random effect here\n")
+      param_text <- paste0(param_text, "# Add animal random effect here\n")
     }
     
     # Genotype (only if uploaded)
@@ -1167,7 +1255,7 @@ server <- function(input, output, session) {
         "genotype"
       }
       
-      param <- paste0(param,
+      param_text <- paste0(param_text,
         "PLINK_FILE\n",
         geno_filename, " # Genotype file name\n",
         "PED_DEPTH\n",
@@ -1176,12 +1264,37 @@ server <- function(input, output, session) {
     }
     
     # Options
-    param <- paste0(
-      param,
-      "(CO)VARIANCES\n",
-      generate_covariance_matrix(length(values$traits)), "\n",
-      "\n"
+    param_text <- paste0(
+      param_text,
+      "(CO)VARIANCES\n"
     )
+    
+    # Handle covariance matrix based on additional effects
+    if (input$opt_mat) {
+      # If maternal effect is selected, use 2x2 matrix
+      param_text <- paste0(param_text, "1 0.01\n0.01 1\n")
+    } else {
+      # Without maternal effect, use single variance value
+      param_text <- paste0(param_text, "1\n")
+    }
+    
+    # Add PE covariance if selected
+    if (input$opt_pe) {
+      param_text <- paste0(param_text, 
+        "(CO)VARIANCES_PE\n",
+        "0.001\n"
+      )
+    }
+    
+    # Add MPE covariance if selected  
+    if (input$opt_mpe) {
+      param_text <- paste0(param_text,
+        "(CO)VARIANCES_MPE\n", 
+        "0.003\n"
+      )
+    }
+    
+    param_text <- paste0(param_text, "\n")
     
     # Add user-selected OPTION parameters
     options <- c()
@@ -1228,6 +1341,47 @@ server <- function(input, output, session) {
     if (input$opt_tuned_g2) options <- c(options, "OPTION tunedG2")
     if (input$opt_maxrounds) options <- c(options, "OPTION maxrounds 1000000")
     
+    # Solution output options
+    if (input$opt_origID) options <- c(options, "OPTION origID")
+    
+    # Accuracy and reliability options
+    if (input$opt_store_accuracy) {
+      options <- c(options, paste0("OPTION store_accuracy ", input$opt_store_accuracy_eff))
+    }
+    if (input$opt_store_accuracy_orig) {
+      if (input$opt_store_accuracy) {
+        # Replace the previous store_accuracy option with the orig version
+        options <- options[!grepl("^OPTION store_accuracy [0-9]+$", options)]
+        options <- c(options, paste0("OPTION store_accuracy ", input$opt_store_accuracy_eff, " orig"))
+      } else {
+        options <- c(options, paste0("OPTION store_accuracy ", input$opt_store_accuracy_eff, " orig"))
+      }
+    }
+    if (input$opt_acctype) {
+      options <- c(options, paste0("OPTION acctype ", input$opt_acctype_value))
+    }
+    if (input$opt_correct_accuracy_by_inbreeding) {
+      options <- c(options, paste0("OPTION correct_accuracy_by_inbreeding ", input$opt_inbreeding_filename))
+    }
+    if (input$opt_correct_accuracy_by_inbreeding_direct) {
+      options <- c(options, "OPTION correct_accuracy_by_inbreeding_direct 0")
+    }
+    
+    # REML specific options
+    if (input$opt_conv_crit_custom) {
+      # Remove default conv_crit if custom is selected
+      options <- options[!grepl("^OPTION conv_crit 1d-12$", options)]
+      options <- c(options, paste0("OPTION conv_crit ", input$opt_conv_crit_value))
+    }
+    if (input$opt_maxrounds_custom) {
+      # Remove default maxrounds if custom is selected
+      options <- options[!grepl("^OPTION maxrounds 1000000$", options)]
+      options <- c(options, paste0("OPTION maxrounds ", input$opt_maxrounds_value))
+    }
+    if (input$opt_no_accelerate_EM) {
+      options <- c(options, "OPTION no_accelerate_EM")
+    }
+    
     # Genotype-specific options
     if (has_geno) {
       options <- c(options, "OPTION AlphaBeta 0.95 0.05")
@@ -1240,9 +1394,22 @@ server <- function(input, output, session) {
     }
     
     # Combine all options
-    param <- paste0(param, paste(options, collapse = "\n"))
+    param_text <- paste0(param_text, paste(options, collapse = "\n"))
     
-    return(param)
+      # Store as default and current parameter
+      values$default_param <- param_text
+      values$current_param <- param_text
+    }
+    
+    # Update textarea with generated parameter using JavaScript
+    session$sendCustomMessage("update_textarea", list(content = values$current_param))
+  })
+  
+  # Reset button - restore default parameter
+  observeEvent(input$reset_param, {
+    values$current_param <- values$default_param
+    session$sendCustomMessage("update_textarea", list(content = values$current_param))
+    showNotification("Parameter file reset to default", type = "message", duration = 2)
   })
   
   # Handle download button click
@@ -1268,250 +1435,20 @@ server <- function(input, output, session) {
   observeEvent(input$confirm_download, {
     removeModal()
     
-    # Generate parameter content
-    param_content <- generate_parameter_content()
-    
-    # Create and trigger download using JavaScript
-    session$sendCustomMessage("download_text", list(
-      content = param_content,
-      filename = "easyblup.par"
-    ))
+    # Get edited content from textarea using JavaScript
+    session$sendCustomMessage("get_textarea_content", list())
   })
   
-  # Helper function to generate parameter content
-  generate_parameter_content <- function() {
-    if (is.null(data())) {
-      return("Please upload a phenotype file first")
+  # Listen for textarea content from JavaScript
+  observeEvent(input$textarea_content, {
+    if (!is.null(input$textarea_content) && nchar(input$textarea_content) > 0) {
+      # Create and trigger download using JavaScript
+      session$sendCustomMessage("download_text", list(
+        content = input$textarea_content,
+        filename = "easyblup.par"
+      ))
     }
-    
-    # Check pedigree and genotype files
-    has_ped <- !is.null(input$ped_file) && nrow(input$ped_file) > 0
-    has_geno <- !is.null(input$geno_file) && nrow(input$geno_file) > 0
-    
-    
-    # Build parameter file
-    param <- paste0(
-      "# PARAMETER FILE for renumf90\n",
-      "# \n",
-      "DATAFILE\n",
-      basename(input$pheno_file$name), "\n",
-      "SKIP_HEADER\n",
-      "1\n",
-      "TRAITS # Specify trait columns\n",
-      if (length(values$traits) > 0) get_col_num(values$traits) else "# Add trait column numbers here",
-      "\n",
-      
-      "FIELDS_PASSED TO OUTPUT\n",
-      "\n",
-      "WEIGHT(S)\n",
-      "\n",
-      "RESIDUAL_VARIANCE\n",
-      generate_covariance_matrix(length(values$traits)), "\n"
-    )
-    
-    # Fixed effects
-    if (length(values$fixed) > 0) {
-      for (eff in values$fixed) {
-        # Determine effect type based on data characteristics
-        col_data <- data()[[eff]]
-        if (is.null(col_data) || length(col_data) == 0) {
-          effect_type <- "cross"
-        } else {
-          n_unique <- length(unique(col_data))
-          n_total <- length(col_data)
-          unique_ratio <- if (n_total > 0) n_unique / n_total else 0
-        
-        # Apply new criteria:
-        # >20 levels OR unique/n > 0.05 → cov
-        # ≤20 levels → cross
-        # character → cross
-        if (is.character(col_data)) {
-          effect_type <- "cross"
-        } else if ((!is.na(n_unique) && n_unique > 20) || (!is.na(unique_ratio) && unique_ratio > 0.05)) {
-          effect_type <- "cov"
-        } else {
-          effect_type <- "cross"
-        }
-        }
-        
-        # Repeat effect for each trait once per EFFECT line
-        n_traits <- length(values$traits)
-        effect_cols <- format_effect_cols(eff, n_traits)
-        if (nzchar(effect_cols)) {
-          param <- paste0(param,
-            "EFFECT\n",
-            effect_cols, " ", effect_type, " alpha # ", eff, " fixed effect (", effect_type, ") (trait order: 1, 2, ...)\n"
-          )
-        } else {
-          param <- paste0(param,
-            "EFFECT\n",
-            "# Add column numbers for ", eff, " (one per trait)\n"
-          )
-        }
-      }
-      param <- paste0(param, "\n")
-    } else {
-      param <- paste0(param, "# Add fixed effects here\n\n")
-    }
-    
-    # Random effects
-    if (length(values$random) > 0) {
-      # First add all EFFECT lines
-      for (eff in values$random) {
-        # Repeat effect for each trait once per EFFECT line
-        n_traits <- length(values$traits)
-        effect_cols <- format_effect_cols(eff, n_traits)
-        if (nzchar(effect_cols)) {
-          param <- paste0(param,
-            "EFFECT\n",
-            effect_cols, " cross alpha # ", eff, " random effect (trait order: 1, 2, ...)\n"
-          )
-        } else {
-          param <- paste0(param,
-            "EFFECT\n",
-            "# Add column numbers for ", eff, " random effect (one per trait)\n"
-          )
-        }
-      }
-      # Then add RANDOM diagonal
-      param <- paste0(param, 
-        "RANDOM\n",
-        "diagonal # Random effects section\n\n"
-      )
-    } else {
-      param <- paste0(param, "# Add other random effects here\n\n")
-    }
-    
-    # Animal effect
-    if (length(values$animal) > 0) {
-      # Repeat animal effect for each trait
-      n_traits <- length(values$traits)
-      effect_cols <- format_effect_cols(values$animal, n_traits)
-      if (nzchar(effect_cols)) {
-        param <- paste0(param,
-          "EFFECT\n",
-          effect_cols, " cross alpha # Animal ID effect (trait order: 1, 2, ...)\n"
-        )
-      } else {
-        param <- paste0(param,
-          "EFFECT\n",
-          "# Add column numbers for animal ID (one per trait)\n"
-        )
-      }
-      param <- paste0(param,
-        "RANDOM\n",
-        "animal # Animal random effect\n"
-      )
-      
-      # Add pedigree file information (always present)
-      pedigree_filename <- if (has_ped) {
-        basename(input$ped_file$name)
-      } else {
-        "pedigree.txt"
-      }
-      
-      param <- paste0(param,
-        "FILE\n",
-        pedigree_filename, "\n",
-        "FILE_POS\n",
-        "1 2 3 # Progeny Sire Dam\n"
-      )
-    } else {
-      param <- paste0(param, "# Add animal random effect here\n")
-    }
-    
-    # Genotype (only if uploaded)
-    if (has_geno) {
-      # Get genotype file name without extension
-      # Look for either .ped or .map files
-      ped_files <- input$geno_file$name[grepl("\\.ped$", input$geno_file$name)]
-      map_files <- input$geno_file$name[grepl("\\.map$", input$geno_file$name)]
-      
-      geno_filename <- if (length(ped_files) > 0) {
-        tools::file_path_sans_ext(ped_files[1])
-      } else if (length(map_files) > 0) {
-        tools::file_path_sans_ext(map_files[1])
-      } else {
-        "genotype"
-      }
-      
-      param <- paste0(param,
-        "PLINK_FILE\n",
-        geno_filename, " # Genotype file name\n",
-        "PED_DEPTH\n",
-        "0\n"
-      )
-    }
-    
-    # Options
-    param <- paste0(
-      param,
-      "(CO)VARIANCES\n",
-      generate_covariance_matrix(length(values$traits)), "\n",
-      "\n"
-    )
-    
-    # Add user-selected OPTION parameters
-    options <- c()
-    
-    # Basic options
-    if (input$opt_remove_all_missing) options <- c(options, "OPTION remove_all_missing")
-    if (input$opt_missing_in_weights) options <- c(options, "OPTION missing_in_weights")
-    if (input$opt_no_basic_statistics) options <- c(options, "OPTION no_basic_statistics")
-    
-    # Missing value options
-    if (input$opt_missing_custom) {
-      options <- c(options, paste0("OPTION missing ", input$opt_missing_value))
-    } else {
-      options <- c(options, "OPTION missing -999")
-    }
-    
-    # File reading options
-    if (input$opt_alpha_size) {
-      options <- c(options, paste0("OPTION alpha_size ", input$opt_alpha_size_value))
-    }
-    if (input$opt_max_string_readline) {
-      options <- c(options, paste0("OPTION max_string_readline ", input$opt_max_string_readline_value))
-    }
-    if (input$opt_max_field_readline) {
-      options <- c(options, paste0("OPTION max_field_readline ", input$opt_max_field_readline_value))
-    }
-    
-    # Inbreeding method
-    if (input$opt_inbreeding_method) {
-      options <- c(options, paste0("OPTION inbreeding_method ", input$opt_inbreeding_method_value))
-    }
-    
-    # Pedigree search
-    if (input$opt_ped_search_complete) {
-      options <- c(options, "OPTION ped_search complete")
-    }
-    
-    # Analysis method options
-    if (input$opt_method_vce) options <- c(options, "OPTION method VCE")
-    if (input$opt_sol_se) options <- c(options, "OPTION sol se")
-    if (input$opt_conv_crit) options <- c(options, "OPTION conv_crit 1d-12")
-    if (input$opt_em_reml) options <- c(options, "OPTION EM-REML 100")
-    if (input$opt_use_yams) options <- c(options, "OPTION use-yams")
-    if (input$opt_tuned_g2) options <- c(options, "OPTION tunedG2")
-    if (input$opt_maxrounds) options <- c(options, "OPTION maxrounds 1000000")
-    
-    # Genotype-specific options
-    if (has_geno) {
-      options <- c(options, "OPTION AlphaBeta 0.95 0.05")
-    }
-    
-    # Add heritability functions
-    heritability_options <- generate_heritability_function(values$traits, values$animal, values$random, values$fixed)
-    if (heritability_options != "") {
-      options <- c(options, heritability_options)
-    }
-    
-    # Combine all options
-    param <- paste0(param, paste(options, collapse = "\n"))
-    
-    return(param)
-  }
+  })
 }
 
 # Run app
