@@ -737,14 +737,38 @@ server <- function(input, output, session) {
   # Read data
   data <- reactive({
     req(input$pheno_file)
+    
     # Try to detect file type and read accordingly
     file_ext <- tolower(tools::file_ext(input$pheno_file$name))
-    if (file_ext == "csv") {
-      read.csv(input$pheno_file$datapath, stringsAsFactors = FALSE)
-    } else {
-      # For .txt and .dat files, use space as separator
-      read.table(input$pheno_file$datapath, header = TRUE, sep = "", stringsAsFactors = FALSE)
+    
+    # Validate file extension
+    if (!file_ext %in% c("csv", "txt", "dat", "")) {
+      showNotification(
+        paste0("不支持的文件格式: .", file_ext, 
+               "\n请上传 CSV、TXT 或 DAT 格式的表型数据文件"),
+        type = "error",
+        duration = 10
+      )
+      return(NULL)
     }
+    
+    # Try to read the file with error handling
+    tryCatch({
+      if (file_ext == "csv") {
+        read.csv(input$pheno_file$datapath, stringsAsFactors = FALSE)
+      } else {
+        # For .txt and .dat files, use space as separator
+        read.table(input$pheno_file$datapath, header = TRUE, sep = "", stringsAsFactors = FALSE)
+      }
+    }, error = function(e) {
+      showNotification(
+        paste0("读取文件失败: ", e$message, 
+               "\n请确保文件格式正确且包含列名"),
+        type = "error",
+        duration = 10
+      )
+      return(NULL)
+    })
   })
   
   # Display variables as draggable items

@@ -8,4 +8,14 @@
 ^DEPLOYMENT\.md$
 ^INSTALLATION\.md$
 ^PROJECT_UNDERSTANDING\.md$
+^PROJECT_SUMMARY\.md$
 ^USAGE\.md$
+^\.venv$
+^\.DS_Store$
+^inst/\.DS_Store$
+^inst/shiny_app/\.DS_Store$
+^inst/shiny_app/rsconnect$
+^inst/shiny_app/deploy\.R$
+^inst/shiny_app/deploy_interactive\.R$
+^inst/shiny_app/minimal_app_backup\.R$
+^inst/shiny_app/README\.md$

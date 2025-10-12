@@ -1,7 +1,7 @@
 Package: easyblup
 Type: Package
 Title: A visual parameter file generator for BLUPF90
-Version: 0.1.0
+Version: 0.1.1
 Author: Your Name
 Maintainer: Your Name <your.email@example.com>
 Description: A Shiny application for generating BLUPF90 parameter files through an interactive drag-and-drop interface.
