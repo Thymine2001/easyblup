@@ -5,7 +5,7 @@ Version: 0.1.1
 Author: Your Name
 Maintainer: Your Name <your.email@example.com>
 Description: A Shiny application for generating BLUPF90 parameter files through an interactive drag-and-drop interface.
-License: MIT
+License: GPL-3
 Depends: R (>= 3.6.0)
 Imports:
     shiny (>= 1.7.0),
@@ -13,5 +13,5 @@ Imports:
 Suggests:
     testthat (>= 3.0.0),
     shinyjqui
-RoxygenNote: 7.2.0
+RoxygenNote: 7.3.2
 Encoding: UTF-8

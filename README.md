@@ -34,20 +34,22 @@ remotes::install_github("Thymine2001/easyblup")
 ### Launch the Application
 
 ```r
-easyblup::run_app()
+library(easyblup)
+easyblup::run_easyblup()
 ```
 
 The app opens in your default browser (or RStudio viewer if preferred).
 
 ## Installation
 
-For detailed installation instructions, see [INSTALLATION.md](INSTALLATION.md)
+For detailed installation instructions and troubleshooting, see [INSTALL_GUIDE.md](INSTALL_GUIDE.md)
 
 ## Usage
 
 1. Launch the application:
    ```r
-   easyblup::run_app()
+   library(easyblup)
+   easyblup::run_easyblup()
    ```
 
 2. Upload your phenotypic data CSV file using the "Upload Phenotypic Data" button (max 10GB)
@@ -103,4 +105,6 @@ easyblup/
 
 ## License
 
-MIT License
+GPL-3 License
+
+This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
