@@ -2,26 +2,19 @@
 
 ## 快速开始
 
-### 1. 安装依赖包
-
-在 R 控制台中运行：
+### 1. 安装 easyblup
 
 ```r
-# 安装必需的包
-install.packages(c("shiny", "sortable"))
-
-# 或者使用提供的安装脚本
-source("run_app.R")
+if (!requireNamespace("remotes", quietly = TRUE)) {
+  install.packages("remotes")
+}
+remotes::install_github("Thymine2001/easyblup")
 ```
 
 ### 2. 启动应用
 
 ```r
-# 方法1：直接运行
-shiny::runApp()
-
-# 方法2：使用提供的脚本
-source("run_app.R")
+easyblup::run_easyblup()
 ```
 
 ## 详细使用步骤

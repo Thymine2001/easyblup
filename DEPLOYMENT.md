@@ -23,7 +23,7 @@
 #### 方法一：使用交互式脚本（推荐）
 
 ```bash
-cd shiny_app
+cd inst/shiny_app
 Rscript deploy_interactive.R
 ```
 
@@ -46,7 +46,7 @@ rsconnect::setAccountInfo(
 )
 
 # 部署应用
-setwd("shiny_app")
+setwd("inst/shiny_app")
 deployApp(
   appDir = ".",
   appName = "easyblup",

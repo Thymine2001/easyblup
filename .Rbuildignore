@@ -1,2 +1,11 @@
 ^.*\.Rproj$
 ^\.Rproj\.user$
+^\.git$
+^\.Rhistory$
+^run_easyblup\.sh$
+^run_easyblup\.bat$
+^quick_start\.R$
+^DEPLOYMENT\.md$
+^INSTALLATION\.md$
+^PROJECT_UNDERSTANDING\.md$
+^USAGE\.md$

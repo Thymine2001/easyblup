@@ -22,25 +22,22 @@ easyblup is an interactive Shiny application that allows users to generate BLUPF
 
 ## Quick Start
 
-### 1. Download the Project
-```bash
-git clone https://github.com/Thymine2001/easyblup.git
-cd easyblup
-```
+### Install from GitHub
 
-### 2. Install Required Packages
 ```r
-install.packages(c("shiny", "sortable", "shinyjqui"), 
-                 repos = "https://cran.rstudio.com/")
+if (!requireNamespace("remotes", quietly = TRUE)) {
+  install.packages("remotes")
+}
+remotes::install_github("Thymine2001/easyblup")
 ```
 
-### 3. Run the Application
-```bash
-cd shiny_app
-Rscript app.R
+### Launch the Application
+
+```r
+easyblup::run_easyblup()
 ```
 
-Then open your browser and go to `http://localhost:3838`
+The app opens in your default browser (or RStudio viewer if preferred).
 
 ## Installation
 
@@ -48,9 +45,9 @@ For detailed installation instructions, see [INSTALLATION.md](INSTALLATION.md)
 
 ## Usage
 
-1. Run the application:
+1. Launch the application:
    ```r
-   shiny::runApp()
+   easyblup::run_easyblup()
    ```
 
 2. Upload your phenotypic data CSV file using the "Upload Phenotypic Data" button (max 10GB)
@@ -84,17 +81,18 @@ Where:
 
 ```
 easyblup/
-├── app.R                    # Main Shiny application
-├── DESCRIPTION              # Package dependencies
-├── easyblup.Rproj           # RStudio project file
-├── example_data.csv         # Example phenotypic data
-├── example_data.ped         # Example genotype data (PED format)
-├── example_data.map         # Example genotype data (MAP format)
-├── run_app.R                # Application launcher script
-├── test_app.R               # Test script
-├── USAGE.md                 # Detailed usage instructions
-├── PROJECT_SUMMARY.md       # Project summary
-└── README.md                # This file
+├── DESCRIPTION               # Package metadata
+├── NAMESPACE                 # Exported functions
+├── R/
+│   └── run_easyblup.R        # Helper to launch the Shiny app
+├── inst/
+│   └── shiny_app/            # Packaged Shiny application assets
+│       ├── app.R             # Main Shiny application
+│       ├── minimal_app.R     # Simplified app variant
+│       └── example_data.*    # Example input files
+├── man/                      # Function documentation
+├── quick_start.R             # Local helper script
+└── README.md                 # Project overview (this file)
 ```
 
 ## Requirements

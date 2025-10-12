@@ -22,11 +22,18 @@ library(shiny)
 library(sortable)
 library(shinyjqui)
 
-# Check if we're in the right directory
-if(!file.exists("shiny_app/app.R")) {
-  cat("ERROR: Please run this script from the easyblup root directory.\n")
-  cat("Make sure you're in the directory containing the 'shiny_app' folder.\n")
-  stop("Wrong directory")
+# Resolve the app path. Prefer the packaged location under inst/ for development.
+app_path <- NULL
+if (file.exists("inst/shiny_app/app.R")) {
+  app_path <- "inst/shiny_app/app.R"
+} else if (file.exists("shiny_app/app.R")) {
+  app_path <- "shiny_app/app.R"
+}
+
+if (is.null(app_path)) {
+  cat("ERROR: Please run this script from the easyblup project root directory.\n")
+  cat("Expected to find the Shiny application under 'inst/shiny_app/'.\n")
+  stop("Application directory not found")
 }
 
 # Launch the application
@@ -35,4 +42,4 @@ cat("The application will open in your default web browser.\n")
 cat("If it doesn't open automatically, go to: http://localhost:3838\n\n")
 
 # Run the app
-shiny::runApp("shiny_app/app.R", launch.browser = TRUE)
+shiny::runApp(app_path, launch.browser = TRUE)

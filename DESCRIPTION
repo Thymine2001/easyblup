@@ -11,5 +11,7 @@ Imports:
     shiny (>= 1.7.0),
     sortable (>= 0.4.2)
 Suggests:
-    testthat (>= 3.0.0)
+    testthat (>= 3.0.0),
+    shinyjqui
 RoxygenNote: 7.2.0
+Encoding: UTF-8

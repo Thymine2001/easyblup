@@ -6,7 +6,7 @@ easyblup 是一个用于生成 BLUPF90 参数文件的可视化 Shiny 应用程�
 
 ## 安装步骤
 
-### 1. 下载项目
+### 1. （可选）下载项目源码
 
 #### 方法一：使用 Git（推荐）
 ```bash
@@ -31,51 +31,44 @@ cd easyblup
 - 访问 https://www.rstudio.com/products/rstudio/download/
 - 下载并安装 RStudio Desktop
 
-### 3. 安装必需的 R 包
+### 3. 安装 easyblup
 
-打开 R 或 RStudio，运行以下命令：
+在 R 或 RStudio 中运行以下命令即可直接安装：
 
 ```r
-# 安装必需的包
-install.packages(c("shiny", "sortable", "shinyjqui"), 
-                 repos = "https://cran.rstudio.com/")
+# 如有必要，先安装 remotes
+if (!requireNamespace("remotes", quietly = TRUE)) {
+  install.packages("remotes")
+}
 
-# 验证安装
-library(shiny)
-library(sortable)
-library(shinyjqui)
+# 从 GitHub 安装 easyblup
+remotes::install_github("Thymine2001/easyblup")
 ```
+
+安装完成后即可使用 `easyblup::run_easyblup()` 启动应用。
 
 ## 使用方法
 
-### 方法一：在 RStudio 中运行
-
-1. 打开 RStudio
-2. 打开项目文件 `easyblup.Rproj`
-3. 在 RStudio 中打开 `shiny_app/app.R` 或 `shiny_app/minimal_app.R`
-4. 点击 "Run App" 按钮
-
-### 方法二：在命令行中运行
-
-```bash
-# 进入项目目录
-cd easyblup/shiny_app
-
-# 运行应用
-Rscript app.R
-# 或者
-Rscript minimal_app.R
-```
-
-### 方法三：在 R 中运行
+### 方法一：直接运行已安装的包（推荐）
 
 ```r
-# 设置工作目录
-setwd("path/to/easyblup/shiny_app")
-
-# 运行应用
-shiny::runApp("app.R")
+easyblup::run_easyblup()
 ```
+
+### 方法二：运行源码版本
+
+1. 克隆或下载项目源码
+2. 打开 RStudio 并载入 `easyblup.Rproj`
+3. 打开 `inst/shiny_app/app.R`（或 `inst/shiny_app/minimal_app.R`）
+4. 点击 "Run App" 按钮，或在控制台运行：
+   ```r
+   shiny::runApp("inst/shiny_app/app.R")
+   ```
+5. 命令行运行示例：
+   ```bash
+   cd easyblup/inst/shiny_app
+   Rscript app.R
+   ```
 
 ## 使用步骤
 
@@ -149,7 +142,7 @@ rsconnect::setAccountInfo(
 )
 
 # 部署应用
-setwd("shiny_app")
+setwd("inst/shiny_app")
 source("deploy.R")
 ```
 
