@@ -8,7 +8,7 @@
 #'
 #' @return This function is called for its side effect of starting the Shiny app.
 #' @export
-run_easyblup <- function(...) {
+run_app <- function(...) {
   app_dir <- system.file("shiny_app", package = "easyblup")
 
   if (app_dir == "") {

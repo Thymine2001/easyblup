@@ -34,7 +34,7 @@ remotes::install_github("Thymine2001/easyblup")
 ### Launch the Application
 
 ```r
-easyblup::run_easyblup()
+easyblup::run_app()
 ```
 
 The app opens in your default browser (or RStudio viewer if preferred).
@@ -47,7 +47,7 @@ For detailed installation instructions, see [INSTALLATION.md](INSTALLATION.md)
 
 1. Launch the application:
    ```r
-   easyblup::run_easyblup()
+   easyblup::run_app()
    ```
 
 2. Upload your phenotypic data CSV file using the "Upload Phenotypic Data" button (max 10GB)

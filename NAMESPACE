@@ -1,2 +1,2 @@
-export(run_easyblup)
+export(run_app)
 import(shiny)
